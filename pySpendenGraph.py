@@ -200,8 +200,8 @@ def createGraphBucketYear(bucketIs='city', sty=2000, endy=2014, value=0.00, scal
                             v2 = g.vs.find(idGen[person2['name']])
                         if (g.es.select(_source=idGen[person2['name']], _target=idGen[
                             person1['name']]).__len__() == 0):  # assert idGen[person2['name']] is same as vertex number
-                            v1['size'] = int((v1['size'] + person1['val']) / scale)
-                            v2['size'] = int((v2['size'] + person2['val']) / scale)
+                            v1['size'] = log(int((v1['size'] + person1['val']) / scale))*14
+                            v2['size'] = log(int((v2['size'] + person2['val']) / scale))*14
                             if v1.degree() <= 4 : g.add_edge(v1, v2, color=color_dict[person1['party']],label= person1['party'],label_size=1)
                             g.add_edge(v1, v2, color=color_dict[person1['party']])
 
@@ -211,8 +211,8 @@ def createGraphBucketYear(bucketIs='city', sty=2000, endy=2014, value=0.00, scal
                         bg2=color_name_to_rgba(v2['color'])
                         opacity1=log(pow(person1['val'],2))/26
                         opacity2=log(pow(person2['val'],2))/26
-                        v1['color']=   mixColor(fg,bg1)#,opacity1,1-opacity1)
-                        v2['color']=   mixColor(fg,bg2)#,opacity2,1-opacity2)
+                        v1['color']=   mixColor(fg,bg1,opacity1,1-opacity1)
+                        v2['color']=   mixColor(fg,bg2,opacity2,1-opacity2)
 
 
 
@@ -284,7 +284,34 @@ for i in range(1994, 1994):
 
 
 
-def drawGraph(graph,layoutAlgo="kk",panelSize=(1500,1500)):
+def drawGraph(graph,i,layoutAlgo="kk",panelSize=(1500,1500)):
+
+
+
+    reset_vertices_ost= []
+    reset_vertices_west=[]
+    persPageRankOst=[]
+    persPageRankWest=[]
+    persPageRankRatio=[]
+
+    for o,v in zip(gra.vs["ost"],gra.vs):
+        if o==True:
+            reset_vertices_ost.append(v)
+        elif o==False:
+            reset_vertices_west.append(v)
+
+    print('Ost-----------------------------------')
+    print([ i["name"]for i in reset_vertices_ost])
+    if reset_vertices_ost: persPageRankOst=graph.personalized_pagerank(directed=False,reset_vertices=reset_vertices_ost)
+    print(persPageRankOst)
+    print('West-----------------------------------')
+    print([ i["name"]for i in reset_vertices_west])
+    if reset_vertices_west: persPageRankWest=graph.personalized_pagerank(directed=False,reset_vertices=reset_vertices_west)
+    print(persPageRankWest)
+
+    persPageRankRatio = [ po/pw for po,pw in zip(persPageRankOst,persPageRankWest)]
+
+
 
     visual_style = {}
     visual_style["edge_curved"]=True
@@ -294,7 +321,9 @@ def drawGraph(graph,layoutAlgo="kk",panelSize=(1500,1500)):
     #logValues=[log(pow(float(i),2))/3 for i in gra.vs["size"]]
     sizeEdge=[i/70 for i in gra.vs["size"]]
     sizeFont=[log(i)*3 for i in gra.vs["size"]]
-    visual_style["vertex_label"] =[i[0:20] for i in gra.vs["name"]]
+    pageRank=[str(pr)[0:6]+", "+str(po)[0:6]+ ", "+str(pw)[0:6] for pr,po,pw in zip(persPageRankRatio,persPageRankOst,persPageRankWest)]
+    labelList= [str(p)[0:22]+ ", " + n for p, n in zip(pageRank,gra.vs["name"])]
+    visual_style["vertex_label"] =[i[0:40] for i in labelList]
     visual_style["edge_width"] = sizeEdge
     visual_style["layout"] = gra.layout(layoutAlgo)
     visual_style["bbox"] = panelSize
@@ -305,7 +334,7 @@ def drawGraph(graph,layoutAlgo="kk",panelSize=(1500,1500)):
 
 
 
-    title=str(i)+"_"+  str(targetIs) +"_"+   str(bucketIs)+".svg"
+    title=str(i)+"_"+  str(i) +"_"+   str(bucketIs)+".svg"
     plot(graph,title, **visual_style)
 
 
@@ -313,14 +342,15 @@ def drawGraph(graph,layoutAlgo="kk",panelSize=(1500,1500)):
 
 #cProfile.runctx("""createGraphBucketYear('year', 1994, 2013,50000.00)""",globals(), locals(), filename="profileNew.profile")
 bucketIs='year'
-targetIs= 2013
-createGraphBucketYear(bucketIs, 2013, 2013,100000.00)
-for i in range(2013, 2014):
-    print(gDictDict[targetIs][i])
+targetIs= 'year'
+createGraphBucketYear(bucketIs, 2001, 2001, 25000.00)
+for i in range(2001, 2002):
+    print(gDictDict[i][i])
 
-    gra = gDictDict[targetIs][i]
+    gra = gDictDict[i][i]
     if gra:
-        drawGraph(gra,layoutAlgo="kk")
+        #print(gra.pagerank())
+        drawGraph(gra,i,layoutAlgo="kk")
 
 
 
