@@ -15,23 +15,23 @@ pr = cProfile.Profile()
 
 
 color_dict = {
-    'SPD': 'darkred',
-    'FDP': 'yellow',
-    'CDU': 'darkgrey',
-    'GRÜNE': 'green',
-    'NPD': 'darkbrown',
-    'AFD': 'brown',
-    'CSU': 'blue',
-    'DIE PARTEI': 'orange',
-    'MLPD': 'red',
-    'ÖDP': 'pink',
-    'WASG': 'green',
-    'PDS': 'pink',
-    'FW': 'grey',
-    'SSW': 'white',
-    'LINKE': 'red',
-    'PRO D': 'brown',
-    'PRO NRW': 'brown',
+    'SPD': '#FF4060',
+    'FDP': 'Yellow',
+    'CDU': 'Light Slate Gray',
+    'GRÜNE': 'Lime Green',
+    'NPD': 'Saddle Brown',
+    'AFD': 'Royal Blue',
+    'CSU': 'Sky Blue',
+    'DIE PARTEI': 'Cyan',
+    'MLPD': 'Dark Red',
+    'ÖDP': 'Orange',
+    'WASG': 'Deep Pink',
+    'PDS': 'Purple',
+    'FW': 'Fuchsia',
+    'SSW': 'Chartreuse',
+    'LINKE': 'Red',
+    'PRO D': 'Sienna',
+    'PRO NRW': 'Peru',
 
 }
 
@@ -105,7 +105,7 @@ for i in data:
         if i['plz']!=[]: i['bund']=i['plz']
         else: i['bund']="NA"
         i['ost'] = False
-        print(str(i['ost'])+', '+str(i['bund'])+', '+i['plz']+', '+i['name'])
+        # print(str(i['ost'])+', '+str(i['bund'])+', '+i['plz']+', '+i['name'])
 
 
 
@@ -113,6 +113,35 @@ for i in data:
 # create UniqueID for every name in data (Spenden.json)
 for i in data:
     gGen[i['name']]
+
+def mixColor (fg,bg,fgOp=0.5,bgOp=0.5):
+
+    if fgOp > 1.0:
+        fgOp=1.0
+        print("fgOP>1.0")
+    if bgOp > 1.0:
+        bgOp=1.0
+        print("bgOP>1.0")
+    if fgOp < 0.1:
+        fgOp=0.01
+        print("fgOP<0.1")
+    if bgOp < 0.1:
+        bgOp=0.1
+        print("bgOP<0.1")
+    color1=(fg[0],fg[1],fg[2],fgOp)
+    color2=(bg[0],bg[1],bg[2],bgOp)
+
+
+    alpha= 1-(1-color1[3]) * (1-color2[3])
+    if alpha <= 0:
+        print(" alpha <=0 ")
+        return mixColor(fg,bf)
+    red = (color1[0] * color1[3]+color2[0] * color2[3]*(1-color1[3]))/alpha
+    green = (color1[1] * color1[3]+color2[1] * color2[3]*(1-color1[3]))/alpha
+    blue = (color1[2] * color1[3]+color2[2] * color2[3]*(1-color1[3]))/alpha
+
+
+    return (red, green, blue, alpha)
 
 
 def createGraphBucketYear(bucketIs='city', sty=2000, endy=2014, value=0.00, scale=1000, graphDict=gGraphDict,
@@ -147,28 +176,45 @@ def createGraphBucketYear(bucketIs='city', sty=2000, endy=2014, value=0.00, scal
                         try:
                             #time critical
                             v1 = g.vs.find(idGen[person1['name']])
-                            v1['color']=(255, 128, 0)
+                            #if v1.degree()>1:
+
+
                         except:
                             g.add_vertex(name=person1['name'], label=person1['name'], id=idGen[person1['name']],
                                          year=person1['year'], party=person1['party'],ost=person1['ost'],
-                                         color=color_dict[person1['party']],
+                                         color=(1.0, 1.0, 1.0, 0.2),
                                          size=5)
                             v1 = g.vs.find(idGen[person1['name']])
 
                         try:
                             #time critical
                             v2 = g.vs.find(idGen[person2['name']])
+
+
+
                         except:
                             g.add_vertex(name=person2['name'], label=person2['name'], id=idGen[person2['name']],
                                          year=person2['year'], party=person2['party'],ost=person2['ost'],
-                                         color=color_dict[person2['party']],
+                                         color=(1.0, 1.0, 1.0, 0.2),
                                          size=5)
                             v2 = g.vs.find(idGen[person2['name']])
                         if (g.es.select(_source=idGen[person2['name']], _target=idGen[
                             person1['name']]).__len__() == 0):  # assert idGen[person2['name']] is same as vertex number
                             v1['size'] = int((v1['size'] + person1['val']) / scale)
                             v2['size'] = int((v2['size'] + person2['val']) / scale)
+                            if v1.degree() <= 4 : g.add_edge(v1, v2, color=color_dict[person1['party']],label= person1['party'],label_size=1)
                             g.add_edge(v1, v2, color=color_dict[person1['party']])
+
+
+                        fg=color_name_to_rgba(color_dict[person1['party']])
+                        bg1=color_name_to_rgba(v2['color'])
+                        bg2=color_name_to_rgba(v2['color'])
+                        opacity1=log(pow(person1['val'],2))/26
+                        opacity2=log(pow(person2['val'],2))/26
+                        v1['color']=   mixColor(fg,bg1)#,opacity1,1-opacity1)
+                        v2['color']=   mixColor(fg,bg2)#,opacity2,1-opacity2)
+
+
 
 
 
@@ -238,37 +284,64 @@ for i in range(1994, 1994):
 
 
 
+def drawGraph(graph,layoutAlgo="kk",panelSize=(1500,1500)):
+
+    visual_style = {}
+    visual_style["edge_curved"]=True
+    visual_style["vertex_color"] = gra.vs["color"]
+    visual_style["vertex_size"] = gra.vs["size"]
+    #logValues=[1/log(float(i+1))*10 for i in gra.degree()]
+    #logValues=[log(pow(float(i),2))/3 for i in gra.vs["size"]]
+    sizeEdge=[i/70 for i in gra.vs["size"]]
+    sizeFont=[log(i)*3 for i in gra.vs["size"]]
+    visual_style["vertex_label"] =[i[0:20] for i in gra.vs["name"]]
+    visual_style["edge_width"] = sizeEdge
+    visual_style["layout"] = gra.layout(layoutAlgo)
+    visual_style["bbox"] = panelSize
+    visual_style["margin"] = max(gra.vs["size"])
+    visual_style["keep_aspect_ratio"]=True
+    #visual_style["palette"]=palettes['gray']
+    visual_style["vertex_label_size"]=sizeFont
+
+
+
+    title=str(i)+"_"+  str(targetIs) +"_"+   str(bucketIs)+".svg"
+    plot(graph,title, **visual_style)
+
+
 
 
 #cProfile.runctx("""createGraphBucketYear('year', 1994, 2013,50000.00)""",globals(), locals(), filename="profileNew.profile")
 bucketIs='year'
-targetIs='Köln'
-createGraphBucketYear(bucketIs, 2014, 2014)
-for i in range(2014, 2015):
-    print(gDictDict[i][i])
+targetIs= 2013
+createGraphBucketYear(bucketIs, 2013, 2013,100000.00)
+for i in range(2013, 2014):
+    print(gDictDict[targetIs][i])
 
-    gra = gDictDict[i][i]
+    gra = gDictDict[targetIs][i]
     if gra:
+        drawGraph(gra,layoutAlgo="kk")
 
 
 
+"""
+Method name	Short name	Algorithm description
+layout_circle	circle, circular	Deterministic layout that places the vertices on a circle
+layout_drl	drl	The Distributed Recursive Layout algorithm for large graphs
+layout_fruchterman_reingold	fr	Fruchterman-Reingold force-directed algorithm
+layout_fruchterman_reingold_3d	fr3d, fr_3d	Fruchterman-Reingold force-directed algorithm in three dimensions
+layout_grid_fruchterman_reingold	grid_fr	Fruchterman-Reingold force-directed algorithm with grid heuristics for large graphs
+layout_kamada_kawai	kk	Kamada-Kawai force-directed algorithm
+layout_kamada_kawai_3d	kk3d, kk_3d	Kamada-Kawai force-directed algorithm in three dimensions
+layout_lgl	large, lgl, large_graph	The Large Graph Layout algorithm for large graphs
+layout_random	random	Places the vertices completely randomly
+layout_random_3d	random_3d	Places the vertices completely randomly in 3D
+layout_reingold_tilford	rt, tree	Reingold-Tilford tree layout, useful for (almost) tree-like graphs
+layout_reingold_tilford_circular
+rt_circular
 
-        #layout = gra.layout_lgl()
-        visual_style = {}
-        visual_style["edge_curved"]=True
-        visual_style["vertex_label_size"]=20
-        #visual_style["vertex_order"]=gra.vs["size"]
-        visual_style["vertex_size"] = gra.vs["size"]
-        visual_style["vertex_color"] = gra.vs["color"]
-        logValues=[1/log(float(i))*10 for i in gra.degree()]
-        print(logValues)
-        visual_style["vertex_label"] = gra.vs["name"]
-        visual_style["edge_width"] = logValues
-        #visual_style["layout"] = layout
-        visual_style["bbox"] = (1500, 1500)
-        visual_style["margin"] = 100
+tree
 
-        title=str(i)+"_"+  str(targetIs) +"_"+   str(bucketIs)+".svg"
-        plot(gra,title, **visual_style)
-
-
+Reingold-Tilford tree layout with a polar coordinate post-transformation, useful for (almost) tree-like graphs
+layout_sphere	sphere, spherical, circular, circular_3d	Deterministic layout that places the vertices evenly on the surface of a sphere
+"""
