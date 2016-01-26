@@ -118,16 +118,16 @@ def mixColor (fg,bg,fgOp=0.5,bgOp=0.5):
 
     if fgOp > 1.0:
         fgOp=1.0
-        print("fgOP>1.0")
+       # print("fgOP>1.0")
     if bgOp > 1.0:
         bgOp=1.0
-        print("bgOP>1.0")
+        #print("bgOP>1.0")
     if fgOp < 0.1:
         fgOp=0.01
-        print("fgOP<0.1")
+       # print("fgOP<0.1")
     if bgOp < 0.1:
         bgOp=0.1
-        print("bgOP<0.1")
+       # print("bgOP<0.1")
     color1=(fg[0],fg[1],fg[2],fgOp)
     color2=(bg[0],bg[1],bg[2],bgOp)
 
@@ -144,19 +144,21 @@ def mixColor (fg,bg,fgOp=0.5,bgOp=0.5):
     return (red, green, blue, alpha)
 
 
-def createGraphBucketYear(bucketIs='city', sty=2000, endy=2014, value=0.00, scale=1000, graphDict=gGraphDict,
+def createGraphBucketYear(bucketIs='city', sty=2000, endy=2014, stmoney=0.00, endmoney=10000000.00, scale=1000, graphDict=gGraphDict,
                           dictDict=gDictDict,
                           listDict=gListDict, set=data):
     # if (type(dictDict).__name__ == type(graphDict).__name__ == type(listDict).__name__ == 'defaultdict'):
 
 
     # append enities of same buckettype  into the same bucketKey list
+
     for i in set:
 
         listDict[i[bucketIs]].append(i)
 
     # take all entities of the same buckettype (exp. city) and same year and put them into a list of list of graphs for each year (actually dict of graphs) connect everyone in the same city -> amount of graph = amount of different cities * different year
     # for all keys of buckettype (exp buckettype=city keys=Cologne, Hamburg ...) calculate the graph
+
     for bucketKey in listDict.keys():
         peopleofbucket = listDict[bucketKey]
 
@@ -170,33 +172,37 @@ def createGraphBucketYear(bucketIs='city', sty=2000, endy=2014, value=0.00, scal
                 for person2 in peopleofbucket:
                     if person1['year'] == year and person2['year'] == year and \
                                     person1['party'] == person2['party'] and \
-                                    person1['val'] >= value and person2['val'] >= value and not person1['name'] == \
-                            person2['name']:
+                                    person1['val'] >= stmoney and person2['val'] >= stmoney and \
+                                    person1['val'] <= endmoney and person2['val']  <= endmoney and not \
+                                    person1['name'] == person2['name']:
 
                         try:
                             #time critical
                             v1 = g.vs.find(idGen[person1['name']])
+                            v1['parties'].add(person1['party'])
                             #if v1.degree()>1:
 
 
                         except:
                             g.add_vertex(name=person1['name'], label=person1['name'], id=idGen[person1['name']],
-                                         year=person1['year'], party=person1['party'],ost=person1['ost'],
+                                         year=person1['year'], parties={person1['party']},ost=person1['ost'],
                                          color=(1.0, 1.0, 1.0, 0.2),
-                                         size=5)
+                                         size=5,persPrEast='',persPrWest='',persPageRank='')
                             v1 = g.vs.find(idGen[person1['name']])
 
                         try:
                             #time critical
                             v2 = g.vs.find(idGen[person2['name']])
+                            v2['parties'].add(person2['party'])
+
 
 
 
                         except:
                             g.add_vertex(name=person2['name'], label=person2['name'], id=idGen[person2['name']],
-                                         year=person2['year'], party=person2['party'],ost=person2['ost'],
+                                         year=person2['year'], parties={person2['party']},ost=person2['ost'],
                                          color=(1.0, 1.0, 1.0, 0.2),
-                                         size=5)
+                                         size=5,persPrEast='',persPrWest='',persPageRank='')
                             v2 = g.vs.find(idGen[person2['name']])
                         if (g.es.select(_source=idGen[person2['name']], _target=idGen[
                             person1['name']]).__len__() == 0):  # assert idGen[person2['name']] is same as vertex number
@@ -284,7 +290,7 @@ for i in range(1994, 1994):
 
 
 
-def drawGraph(graph,i,layoutAlgo="kk",panelSize=(1500,1500)):
+def drawGraph(graph,year,bucketIs,csvFile,personalPagerank=False,euclidDist=False,layoutAlgo="kk",panelSize=(1500,1500)):
 
 
 
@@ -293,23 +299,101 @@ def drawGraph(graph,i,layoutAlgo="kk",panelSize=(1500,1500)):
     persPageRankOst=[]
     persPageRankWest=[]
     persPageRankRatio=[]
+    normalPagerank=[]
+    shapeOst=[]
+    euclidXY=[]
 
-    for o,v in zip(gra.vs["ost"],gra.vs):
-        if o==True:
-            reset_vertices_ost.append(v)
-        elif o==False:
-            reset_vertices_west.append(v)
+    if personalPagerank:
+        for o,v in zip(gra.vs["ost"],gra.vs):
+            if o==True:
+                reset_vertices_ost.append(v)
+                shapeOst.append('square')
+            elif o==False:
+                reset_vertices_west.append(v)
+                shapeOst.append('circle')
 
-    print('Ost-----------------------------------')
-    print([ i["name"]for i in reset_vertices_ost])
-    if reset_vertices_ost: persPageRankOst=graph.personalized_pagerank(directed=False,reset_vertices=reset_vertices_ost)
-    print(persPageRankOst)
-    print('West-----------------------------------')
-    print([ i["name"]for i in reset_vertices_west])
-    if reset_vertices_west: persPageRankWest=graph.personalized_pagerank(directed=False,reset_vertices=reset_vertices_west)
-    print(persPageRankWest)
 
-    persPageRankRatio = [ po/pw for po,pw in zip(persPageRankOst,persPageRankWest)]
+    if reset_vertices_ost:
+        persPageRankOst=graph.personalized_pagerank(directed=False,reset_vertices=reset_vertices_ost)
+        print('Ost-----------------------------------')
+        print([ i["name"]for i in reset_vertices_ost])
+        print(persPageRankOst)
+    if reset_vertices_west:
+        persPageRankWest=graph.personalized_pagerank(directed=False,reset_vertices=reset_vertices_west)
+        print('West-----------------------------------')
+        print([ i["name"]for i in reset_vertices_west])
+        print(persPageRankWest)
+
+    if reset_vertices_ost and reset_vertices_west:
+        persPageRankRatio = [ po/pw for po,pw in zip(persPageRankOst,persPageRankWest)]
+
+    if not personalPagerank:
+        print('calculate normal pagerank-----------------------------------')
+        normalPagerank=graph.pagerank(directed=False)
+
+    print("vertex list")
+    print(len(graph.vs))
+
+    print("ost list")
+    print(len(persPageRankOst))
+
+
+    print("west list")
+    print(len(persPageRankWest))
+
+    print("------------------")
+
+
+    if euclidDist and personalPagerank:
+
+        #euclidXY=[[ver for ver in range(len(graph.vs)) ] for xy in range(2)]
+
+
+        for xy in range(len(graph.vs)):
+            #print(xy)
+            try:
+                x=persPageRankOst[xy]*100
+            except:
+                x=0
+
+            try:
+                y=persPageRankWest[xy]*100
+            except:
+                y=0
+
+            euclidXY.append((x,y))
+
+        layoutEuclid=Layout(euclidXY)
+        layoutEuclid.scale((5,2))
+
+    partyPersonalPageRankMedian ={}
+    if personalPagerank:
+        print("partyPersonalPageRankMedian   if")
+        print("persPageRankOst:",len(persPageRankOst)," persPageRankWest:", len(persPageRankWest), " gra:",len(gra.vs["parties"]))
+
+        for prOst,prWest,parties in zip(persPageRankOst,persPageRankWest,gra.vs["parties"]):
+            print(str(prOst)+', '+str(prWest)+', '+str(parties))
+            for party in parties:
+                newEntry=[prOst,prWest,1]
+                try:
+                    partyPersonalPageRankMedian[party]=[x + y for x, y in zip(partyPersonalPageRankMedian[party], newEntry)]
+                except:
+                    partyPersonalPageRankMedian[party]=newEntry
+        print(partyPersonalPageRankMedian)
+
+        partyPersonalPageRankMedian={key: x+[x[0]/x[2],x[1]/x[2],x[0]/x[1],x[0]/x[1]/x[2],year] for key, x in partyPersonalPageRankMedian.items()}
+        print(partyPersonalPageRankMedian)
+        # [persPageRankOst,persPageRanKWest,Amount, median spersPageRankOst,median pageRankEast/ median pageRankWest. median persPageRanKWes, median persPageRankOst/persPageRanKWest,year]
+
+        with open(csvFile,'a') as out_csv:
+            wr=csv.writer(out_csv,dialect='excel')
+            wr.writerows([key]+x for key, x in partyPersonalPageRankMedian.items())
+
+
+
+
+
+
 
 
 
@@ -321,20 +405,35 @@ def drawGraph(graph,i,layoutAlgo="kk",panelSize=(1500,1500)):
     #logValues=[log(pow(float(i),2))/3 for i in gra.vs["size"]]
     sizeEdge=[i/70 for i in gra.vs["size"]]
     sizeFont=[log(i)*3 for i in gra.vs["size"]]
-    pageRank=[str(pr)[0:6]+", "+str(po)[0:6]+ ", "+str(pw)[0:6] for pr,po,pw in zip(persPageRankRatio,persPageRankOst,persPageRankWest)]
+
+    if persPageRankRatio and persPageRankOst and persPageRankWest:
+        pageRank=[str(pr)[0:6]+", "+str(po)[0:6]+ ", "+str(pw)[0:6] for pr,po,pw in zip(persPageRankRatio,persPageRankOst,persPageRankWest)]
+    elif persPageRankOst:
+        pageRank=[str(pr)[0:6]+", " for pr in persPageRankOst]
+    elif persPageRankWest:
+        pageRank=[str(pr)[0:6]+", " for pr in persPageRankWest]
+    elif normalPagerank:
+        pageRank=[str(pr)[0:6]+", " for pr in normalPagerank]
+
     labelList= [str(p)[0:22]+ ", " + n for p, n in zip(pageRank,gra.vs["name"])]
     visual_style["vertex_label"] =[i[0:40] for i in labelList]
     visual_style["edge_width"] = sizeEdge
-    visual_style["layout"] = gra.layout(layoutAlgo)
+    if not euclidDist:
+        visual_style["layout"] = gra.layout(layoutAlgo)
+    elif euclidDist:
+        visual_style["xlab"]='Pagerank from East'
+        visual_style["ylab"]='Pagerank from West'
+        visual_style["layout"]=layoutEuclid
     visual_style["bbox"] = panelSize
     visual_style["margin"] = max(gra.vs["size"])
     visual_style["keep_aspect_ratio"]=True
     #visual_style["palette"]=palettes['gray']
     visual_style["vertex_label_size"]=sizeFont
+    if shapeOst: visual_style["vertex_shape"]=shapeOst
 
 
 
-    title=str(i)+"_"+  str(i) +"_"+   str(bucketIs)+".svg"
+    title=str(year)+"_"+  str(i) +"_"+   str(bucketIs)+ '50000-unendlich-noeuclid' +".svg"
     plot(graph,title, **visual_style)
 
 
@@ -343,14 +442,23 @@ def drawGraph(graph,i,layoutAlgo="kk",panelSize=(1500,1500)):
 #cProfile.runctx("""createGraphBucketYear('year', 1994, 2013,50000.00)""",globals(), locals(), filename="profileNew.profile")
 bucketIs='year'
 targetIs= 'year'
-createGraphBucketYear(bucketIs, 2001, 2001, 25000.00)
-for i in range(2001, 2002):
-    print(gDictDict[i][i])
+fromYear=1995
+toYear=1995
+createGraphBucketYear(bucketIs, fromYear, toYear, 50000)
+csvFile=str(fromYear)+'-'+str(toYear)+'_'+'bucketIs_'+bucketIs+'.csv'
 
+with open(csvFile,'w') as out_csv:
+    wr=csv.writer(out_csv,dialect='excel')
+    wr.writerow(["Party","PersonalPageRankEast","PersonalPageRankWest","Amount of Nodes","PersonalPageRankEast/Amount of Nodes", "PersonalPageRankWest/Amount of Nodes","PersonalPageRankEast/PersonalPageRankWest", "PersonalPageRankEast/PersonalPageRankWest/Amount of Nodes","Year"])
+
+for i in range(fromYear, toYear+1):
+    #print(gDictDict[i][i])
+    gra=[]
     gra = gDictDict[i][i]
     if gra:
         #print(gra.pagerank())
-        drawGraph(gra,i,layoutAlgo="kk")
+        print(i)
+        drawGraph(gra,year=i,bucketIs=bucketIs,csvFile=csvFile,personalPagerank=True,euclidDist=False,layoutAlgo="kk")
 
 
 
