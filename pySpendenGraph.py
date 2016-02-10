@@ -290,7 +290,7 @@ for i in range(1994, 1994):
 
 
 
-def drawGraph(graph,year,bucketIs,csvFile,personalPagerank=False,euclidDist=False,layoutAlgo="kk",panelSize=(1500,1500)):
+def drawGraph(graph,year,bucketIs,csvFile,saveCSV,personalPagerank=False,euclidDist=False,layoutAlgo="kk",panelSize=(1500,1500)):
 
 
 
@@ -367,7 +367,7 @@ def drawGraph(graph,year,bucketIs,csvFile,personalPagerank=False,euclidDist=Fals
         layoutEuclid.scale((5,2))
 
     partyPersonalPageRankMedian ={}
-    if personalPagerank:
+    if personalPagerank and saveCSV:
         print("partyPersonalPageRankMedian   if")
         print("persPageRankOst:",len(persPageRankOst)," persPageRankWest:", len(persPageRankWest), " gra:",len(gra.vs["parties"]))
 
@@ -407,13 +407,13 @@ def drawGraph(graph,year,bucketIs,csvFile,personalPagerank=False,euclidDist=Fals
     sizeFont=[log(i)*3 for i in gra.vs["size"]]
 
     if persPageRankRatio and persPageRankOst and persPageRankWest:
-        pageRank=[str(pr)[0:6]+", "+str(po)[0:6]+ ", "+str(pw)[0:6] for pr,po,pw in zip(persPageRankRatio,persPageRankOst,persPageRankWest)]
+        pageRank=[str("{:.5f}".format(pr))[0:6]+", "+str("{:.5f}".format(po))[0:6]+ ", "+str("{:.5f}".format(pw))[0:6] for pr,po,pw in zip(persPageRankRatio,persPageRankOst,persPageRankWest)]
     elif persPageRankOst:
-        pageRank=[str(pr)[0:6]+", " for pr in persPageRankOst]
+        pageRank=[str("{:.5f}".format(pr))[0:6]+", " for pr in persPageRankOst]
     elif persPageRankWest:
-        pageRank=[str(pr)[0:6]+", " for pr in persPageRankWest]
+        pageRank=[str("{:.5f}".format(pr))[0:6]+", " for pr in persPageRankWest]
     elif normalPagerank:
-        pageRank=[str(pr)[0:6]+", " for pr in normalPagerank]
+        pageRank=[str("{:.5f}".format(pr))[0:6]+", " for pr in normalPagerank]
 
     labelList= [str(p)[0:22]+ ", " + n for p, n in zip(pageRank,gra.vs["name"])]
     visual_style["vertex_label"] =[i[0:40] for i in labelList]
@@ -458,7 +458,7 @@ for i in range(fromYear, toYear+1):
     if gra:
         #print(gra.pagerank())
         print(i)
-        drawGraph(gra,year=i,bucketIs=bucketIs,csvFile=csvFile,personalPagerank=True,euclidDist=False,layoutAlgo="kk")
+        drawGraph(gra,year=i,bucketIs=bucketIs,csvFile=csvFile,saveCSV=True,personalPagerank=True,euclidDist=False,layoutAlgo="kk")
 
 
 
